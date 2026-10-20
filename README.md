@@ -15,7 +15,7 @@ Plain HTML/CSS/JS. No build step, no framework, so it runs straight on GitHub Pa
 - **Units & Sig Figs**: converter, sig-fig counter, calculation rules, quick drill
 - **Search** across everything
 - **Progress** (quiz bests, solved problems, "unit done" checkmarks) saved in the browser, no accounts
-- Dark mode (remembers your choice); respects reduced-motion settings
+- **Themes**: palette button in the header (Siena, Siena Night, Dark, Light, Dusk, Astro, Neo, Crimson, Stealth Blue, Orange, Nord); remembers your choice
 
 ## Turning on the website (one time)
 
@@ -28,7 +28,7 @@ Plain HTML/CSS/JS. No build step, no framework, so it runs straight on GitHub Pa
 ```
 index.html, kinematics-1d.html, kinematics-2d.html, forces.html,
 formulas.html, test.html, tools.html, search.html   thin page shells
-assets/style.css      all styling (colors are CSS variables; dark mode swaps them)
+assets/style.css      all styling; every theme is a block of color variables at the top
 assets/app.js         header/nav, dark mode, progress storage, on-demand math loading, unit list
 assets/diagrams.js    SVG figures (free-body diagrams, inclines, pulleys, graphs, vectors…)
 assets/practice.js    problem cards (answer checking, hints, steps) and quiz cards
@@ -39,6 +39,7 @@ assets/tools.js       converter + sig figs
 assets/search.js      search
 data/<unit>.js        ALL of a unit's content
 docs/CONTENT-GUIDE.md how to write content (formulas, quiz questions, problem templates, figures)
+scripts/bump-version.sh  stamps ?v= on asset links so phones load fresh files after an update
 ```
 
 ## Editing content
@@ -52,6 +53,16 @@ it shows the exact format for formulas, concepts, mistakes, examples, quiz quest
 2. Copy `forces.html` to `<new-id>.html`; change `data-page`, the `<title>`, and the `data/...js` script.
 3. Add the unit to the `UNITS` list at the top of `assets/app.js`.
 4. Add `<script defer src="data/<new-id>.js">` to `formulas.html`, `test.html` and `search.html`.
+
+## Publishing an update
+
+After changing anything in `assets/` or `data/`, run `./scripts/bump-version.sh` before committing.
+It changes the `?v=` on every CSS/JS link so browsers fetch the new files instead of mixing cached old ones.
+
+## Adding a theme
+
+Add a `:root[data-theme="your-id"] { --accent: …; --hi: …; }` line in `assets/style.css` (copy one of the others),
+then add a matching entry to the `THEMES` list in `assets/app.js` so it shows up in the picker.
 
 ## Previewing locally
 
