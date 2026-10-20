@@ -287,7 +287,7 @@
       <footer class="site-footer">
         Made for Siena physics · Giancoli, <em>Physics</em> 7th ed.<br>
         Progress is saved on this device only. No accounts, no tracking.<br>
-        © ${new Date().getFullYear()} Axel Eration
+        © ${new Date().getFullYear()} Newt Tonne & Axel Eration
       </footer>
     `));
 
