@@ -1,10 +1,10 @@
 /* ============================================================
-   Siena Physics — shared page logic
-   - builds the header/nav on every page
-   - dark mode toggle
-   - renders unit pages (Notes / Examples / Quiz / Problems)
-     from the data files in /data
-   - renders the home page and the formula sheet
+   Siena Physics: core (loaded on every page)
+   - unit registry, header/nav/footer, dark mode
+   - progress saved in localStorage
+   - KaTeX loaded on demand the first time a page shows math
+   - home page + formula sheet rendering
+   Exposes window.SP for the page scripts.
    ============================================================ */
 (function () {
   'use strict';
@@ -15,36 +15,40 @@
       id: 'kinematics-1d',
       href: 'kinematics-1d.html',
       title: '1D Kinematics',
+      short: '1D Motion',
       chapter: 'Chapter 2',
-      blurb: 'Displacement, velocity, acceleration, and free fall in a straight line.',
+      num: '2',
+      blurb: 'Displacement, velocity, acceleration, the Big 3, and free fall.',
     },
     {
       id: 'kinematics-2d',
       href: 'kinematics-2d.html',
       title: '2D Kinematics & Vectors',
+      short: '2D Motion',
       chapter: 'Chapter 3',
-      blurb: 'Vector components, adding vectors, and projectile motion.',
+      num: '3',
+      blurb: 'Vector components, relative velocity, and projectile motion.',
     },
     {
       id: 'forces',
       href: 'forces.html',
       title: "Forces & Newton's Laws",
+      short: 'Forces',
       chapter: 'Chapter 4',
-      blurb: "Newton's three laws, free-body diagrams, friction, and inclines.",
+      num: '4',
+      blurb: 'Free-body diagrams, friction, inclines, tension, and elevators.',
     },
   ];
 
-  const TABS = [
-    { id: 'notes', label: 'Notes' },
-    { id: 'examples', label: 'Examples' },
-    { id: 'quiz', label: 'Quiz' },
-    { id: 'problems', label: 'Problems' },
+  const PAGES = [
+    { id: 'formulas', href: 'formulas.html', title: 'Formula Sheet', short: 'Formulas' },
+    { id: 'test', href: 'test.html', title: 'Test Prep', short: 'Test Prep' },
+    { id: 'tools', href: 'tools.html', title: 'Units & Sig Figs', short: 'Tools' },
   ];
 
-  // Unit data files register themselves here.
   window.UNIT_DATA = window.UNIT_DATA || {};
 
-  // ---------- helpers ----------
+  // ---------- small helpers ----------
 
   function el(html) {
     const t = document.createElement('template');
@@ -52,19 +56,110 @@
     return t.content.firstElementChild;
   }
 
-  // Render $...$ and $$...$$ with KaTeX (if it loaded).
-  function typeset(node) {
-    if (typeof window.renderMathInElement !== 'function') return;
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // ---------- math (KaTeX, loaded only when needed) ----------
+
+  const KATEX = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/';
+  const mathQueue = [];
+  let mathState = 'idle';
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.append(s);
+    });
+  }
+
+  function loadCss(href) {
+    return new Promise(resolve => {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = href;
+      l.onload = resolve;
+      l.onerror = resolve;
+      document.head.append(l);
+    });
+  }
+
+  function renderMath(node) {
     window.renderMathInElement(node, {
       delimiters: [
-        { left: '$$', right: '$$', display: true },
-        { left: '$', right: '$', display: false },
+        { left: '\\[', right: '\\]', display: true },
+        { left: '\\(', right: '\\)', display: false },
       ],
       throwOnError: false,
     });
   }
 
-  const LETTERS = 'ABCDEFGH';
+  function typeset(node) {
+    if (!node) return;
+    if (mathState === 'ready') { renderMath(node); return; }
+    mathQueue.push(node);
+    if (mathState !== 'idle') return;
+    mathState = 'loading';
+    Promise.all([
+      loadCss(KATEX + 'katex.min.css'),
+      loadScript(KATEX + 'katex.min.js').then(() => loadScript(KATEX + 'contrib/auto-render.min.js')),
+    ]).then(() => {
+      mathState = 'ready';
+      mathQueue.splice(0).forEach(renderMath);
+    }).catch(() => { mathState = 'failed'; });
+  }
+
+  // ---------- progress (this device only) ----------
+
+  const KEY = 'sp-progress-v1';
+  let progress = null;
+
+  function loadProgress() {
+    if (progress) return progress;
+    try { progress = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { progress = {}; }
+    progress.units = progress.units || {};
+    progress.tests = progress.tests || [];
+    return progress;
+  }
+
+  function saveProgress() {
+    try { localStorage.setItem(KEY, JSON.stringify(progress)); } catch (e) { /* storage blocked */ }
+  }
+
+  const Progress = {
+    unit(id) {
+      const p = loadProgress();
+      p.units[id] = p.units[id] || { done: false, quizBest: null, quizRuns: 0, solved: {}, problemCount: 0 };
+      return p.units[id];
+    },
+    update(id, fn) {
+      fn(this.unit(id));
+      saveProgress();
+    },
+    tests() { return loadProgress().tests; },
+    addTest(entry) {
+      const p = loadProgress();
+      p.tests.unshift(entry);
+      p.tests = p.tests.slice(0, 10);
+      saveProgress();
+    },
+    reset() {
+      progress = { units: {}, tests: [] };
+      saveProgress();
+    },
+  };
 
   // ---------- theme ----------
 
@@ -80,51 +175,74 @@
     try { localStorage.setItem('theme', next); } catch (e) { /* storage blocked */ }
   }
 
-  // ---------- header / nav ----------
+  // ---------- header / footer ----------
+
+  const ICONS = {
+    logo: '<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="9" fill="none" stroke="#c8961f" stroke-width="2"/><path d="M6 25 Q16 -1 26 25" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="0.01 4.4"/><circle cx="16" cy="12" r="3.2" fill="#c8961f"/></svg>',
+    search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+    theme: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 0 0 17z" fill="currentColor"/></svg>',
+    menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+  };
 
   function renderHeader(page) {
-    const links = [
-      { id: 'home', href: 'index.html', label: 'Home' },
-      ...UNITS.map(u => ({ id: u.id, href: u.href, label: u.title })),
-      { id: 'formulas', href: 'formulas.html', label: 'Formula Sheet' },
-    ];
-
+    const link = (p, label) => `<li><a href="${p.href}"${p.id === page ? ' aria-current="page"' : ''}>${label}</a></li>`;
     const header = el(`
       <header class="site-header">
         <div class="bar">
-          <a class="brand" href="index.html">Siena Physics</a>
-          <button class="icon-btn theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg>
-          </button>
-          <button class="icon-btn menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="site-nav">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-          </button>
+          <a class="brand" href="index.html">${ICONS.logo}<span>Siena Physics</span></a>
+          <nav id="site-nav" class="site-nav inline" aria-label="Main">
+            <ul>
+              ${link({ id: 'home', href: 'index.html' }, 'Home')}
+              <li class="nav-group">Units</li>
+              ${UNITS.map(u => link(u, `<span class="full">${u.title}</span>`)).join('')}
+              <li class="nav-group">Study</li>
+              ${PAGES.map(p => link(p, p.title)).join('')}
+            </ul>
+          </nav>
+          <a class="icon-btn" href="search.html" aria-label="Search" title="Search">${ICONS.search}</a>
+          <button class="icon-btn theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">${ICONS.theme}</button>
+          <button class="icon-btn menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="site-nav-mobile">${ICONS.menu}</button>
         </div>
-        <nav id="site-nav" class="site-nav" aria-label="Main">
-          ${links.map(l => `<a href="${l.href}"${l.id === page ? ' aria-current="page"' : ''}>${l.label}</a>`).join('')}
-        </nav>
       </header>
     `);
 
-    header.querySelector('.theme-toggle').addEventListener('click', toggleTheme);
+    // On desktop the nav sits inline in the bar using short labels; on phones it drops down full-width.
+    const inlineNav = header.querySelector('.site-nav');
+    const mobileNav = inlineNav.cloneNode(true);
+    mobileNav.id = 'site-nav-mobile';
+    mobileNav.classList.remove('inline');
+    header.append(mobileNav);
+    inlineNav.querySelectorAll('a').forEach(a => {
+      const match = [...UNITS, ...PAGES].find(x => x.href === a.getAttribute('href'));
+      if (match) a.textContent = match.short;
+    });
+    const wide = window.matchMedia('(min-width: 1000px)');
+    const syncNav = () => { inlineNav.hidden = !wide.matches; mobileNav.hidden = wide.matches; };
+    syncNav();
+    wide.addEventListener('change', syncNav);
 
+    header.querySelector('.theme-toggle').addEventListener('click', toggleTheme);
     const menuBtn = header.querySelector('.menu-toggle');
-    const nav = header.querySelector('.site-nav');
     menuBtn.addEventListener('click', () => {
-      const open = nav.classList.toggle('open');
+      const open = mobileNav.classList.toggle('open');
       menuBtn.setAttribute('aria-expanded', String(open));
       menuBtn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
     });
 
     document.body.prepend(header);
+    document.body.append(el(`
+      <footer class="site-footer">
+        Made for Siena physics · Giancoli, <em>Physics</em> 7th ed.<br>
+        Progress is saved on this device only. No accounts, no tracking.
+      </footer>
+    `));
 
-    // Let sticky elements (the unit tabs) sit just below the header, whatever its height.
+    // Sticky elements sit just below the header, whatever its height.
     const setHeaderHeight = () => {
-      document.documentElement.style.setProperty('--header-h', `${header.offsetHeight}px`);
+      document.documentElement.style.setProperty('--header-h', `${header.querySelector('.bar').offsetHeight}px`);
     };
     setHeaderHeight();
-    if ('ResizeObserver' in window) new ResizeObserver(setHeaderHeight).observe(header);
-    document.body.append(el(`<footer class="site-footer">Made for Siena physics · Giancoli, <em>Physics</em> 7th ed.</footer>`));
+    window.addEventListener('resize', setHeaderHeight, { passive: true });
   }
 
   // ---------- home ----------
@@ -132,21 +250,34 @@
   function renderHome(main) {
     const grid = main.querySelector('#unit-grid');
     UNITS.forEach(u => {
+      const p = Progress.unit(u.id);
+      const solved = Object.keys(p.solved).length;
+      const stats = [];
+      if (p.quizBest != null) stats.push(`<span class="tag green">Quiz best ${p.quizBest}%</span>`);
+      if (solved) stats.push(`<span class="tag">${solved}${p.problemCount ? ` / ${p.problemCount}` : ''} problems solved</span>`);
       grid.append(el(`
         <a class="card unit-card" href="${u.href}">
-          <p class="eyebrow">${u.chapter}</p>
-          <h3>${u.title}</h3>
-          <p>${u.blurb}</p>
+          <span class="num" aria-hidden="true">${u.num}</span>
+          <span>
+            <p class="eyebrow">${u.chapter}</p>
+            <h3>${u.title}</h3>
+            <p>${u.blurb}</p>
+            ${stats.length ? `<span class="stats">${stats.join('')}</span>` : ''}
+          </span>
+          ${p.done ? '<span class="check" title="Marked done" aria-label="Marked done">✓</span>' : ''}
         </a>
       `));
     });
-    grid.append(el(`
-      <a class="card unit-card" href="formulas.html">
-        <p class="eyebrow">All units</p>
-        <h3>Formula Sheet</h3>
-        <p>Every key equation on one page. Printable.</p>
-      </a>
-    `));
+
+    const reset = main.querySelector('#reset-progress');
+    if (reset) {
+      reset.addEventListener('click', () => {
+        if (confirm('Clear all saved quiz scores, solved problems and checkmarks on this device?')) {
+          Progress.reset();
+          location.reload();
+        }
+      });
+    }
   }
 
   // ---------- formula sheet ----------
@@ -159,11 +290,11 @@
       const rows = data.formulas.map(f => `
         <tr>
           <td>${f.name}${f.note ? `<span class="note">${f.note}</span>` : ''}</td>
-          <td>$${f.tex}$</td>
+          <td>\\(${f.tex}\\)</td>
         </tr>`).join('');
       wrap.append(el(`
         <section class="sheet-section">
-          <h2><a href="${u.href}">${u.title}</a> <span class="eyebrow">${u.chapter}</span></h2>
+          <h2><a href="${u.href}">${u.title}</a> <span class="tag">${u.chapter}</span></h2>
           <table class="sheet-table"><tbody>${rows}</tbody></table>
         </section>
       `));
@@ -171,253 +302,13 @@
     typeset(main);
   }
 
-  // ---------- unit page ----------
-
-  function renderUnit(main, unitId) {
-    const meta = UNITS.find(u => u.id === unitId);
-    const data = window.UNIT_DATA[unitId];
-    if (!meta || !data) {
-      main.innerHTML = '<p>Unit not found.</p>';
-      return;
-    }
-    document.title = `${meta.title} · Siena Physics`;
-
-    main.innerHTML = `
-      <p class="eyebrow">Giancoli ${meta.chapter}</p>
-      <h1>${meta.title}</h1>
-      <p class="lede">${data.summary || meta.blurb}</p>
-      <div class="tabs" role="tablist" aria-label="Unit sections">
-        ${TABS.map(t => `<button class="tab" type="button" role="tab" id="tab-${t.id}" aria-controls="panel-${t.id}" aria-selected="false">${t.label}</button>`).join('')}
-      </div>
-      ${TABS.map(t => `<section class="panel" id="panel-${t.id}" role="tabpanel" aria-labelledby="tab-${t.id}" hidden></section>`).join('')}
-    `;
-
-    renderNotes(main.querySelector('#panel-notes'), data);
-    renderExamples(main.querySelector('#panel-examples'), data);
-    renderQuiz(main.querySelector('#panel-quiz'), data);
-    renderProblems(main.querySelector('#panel-problems'), data);
-    typeset(main);
-
-    // Tab switching; the URL hash (e.g. #quiz) remembers the open tab.
-    function select(id, updateHash) {
-      TABS.forEach(t => {
-        const on = t.id === id;
-        main.querySelector(`#tab-${t.id}`).setAttribute('aria-selected', String(on));
-        main.querySelector(`#panel-${t.id}`).hidden = !on;
-      });
-      if (updateHash) history.replaceState(null, '', `#${id}`);
-    }
-    main.querySelectorAll('.tab').forEach(btn => {
-      btn.addEventListener('click', () => select(btn.id.replace('tab-', ''), true));
-    });
-    const fromHash = location.hash.slice(1);
-    select(TABS.some(t => t.id === fromHash) ? fromHash : 'notes', false);
-  }
-
-  function placeholder(data) {
-    return data.placeholder
-      ? `<div class="placeholder-note">Skeleton: the content below is sample material and will be replaced with notes and problems from class.</div>`
-      : '';
-  }
-
-  function renderNotes(panel, data) {
-    panel.innerHTML = `
-      ${placeholder(data)}
-      <h2>Key formulas</h2>
-      <div class="formula-list">
-        ${data.formulas.map(f => `
-          <div class="card formula">
-            <p class="name">${f.name}</p>
-            $$${f.tex}$$
-            ${f.note ? `<p class="note">${f.note}</p>` : ''}
-          </div>`).join('')}
-      </div>
-      <h2>Concepts</h2>
-      ${data.concepts.map(c => `
-        <div class="card concept">
-          <h3>${c.title}</h3>
-          ${c.body}
-        </div>`).join('')}
-    `;
-  }
-
-  function renderExamples(panel, data) {
-    panel.innerHTML = `
-      ${placeholder(data)}
-      <p class="lede">Try each one yourself first, then tap to check the solution.</p>
-      ${data.examples.map((ex, i) => `
-        <div class="card example">
-          <p class="q-num">Example ${i + 1}${ex.title ? ` · ${ex.title}` : ''}</p>
-          <p>${ex.problem}</p>
-          <details>
-            <summary>Show solution</summary>
-            <ol class="steps">${ex.steps.map(s => `<li>${s}</li>`).join('')}</ol>
-            <div class="answer">${ex.answer}</div>
-          </details>
-        </div>`).join('')}
-    `;
-  }
-
-  function renderQuiz(panel, data) {
-    const total = data.quiz.length;
-    panel.innerHTML = `
-      ${placeholder(data)}
-      <div class="quiz-bar">
-        <span class="score" aria-live="polite">0 / ${total} correct</span>
-        <button class="btn ghost reset" type="button">Start over</button>
-      </div>
-      <ol class="question-list">
-        ${data.quiz.map((q, i) => `
-          <li class="card question" data-answer="${q.answer}">
-            <p class="q-num">Question ${i + 1} of ${total}</p>
-            <p>${q.question}</p>
-            <div class="choices">
-              ${q.choices.map((c, j) => `<button class="choice" type="button" data-index="${j}"><strong>${LETTERS[j]}.</strong> ${c}</button>`).join('')}
-            </div>
-            <div class="explain" hidden>${q.explain || ''}</div>
-          </li>`).join('')}
-      </ol>
-    `;
-
-    const scoreEl = panel.querySelector('.score');
-    let correct = 0;
-
-    panel.querySelectorAll('.question').forEach(qEl => {
-      const answer = Number(qEl.dataset.answer);
-      const buttons = qEl.querySelectorAll('.choice');
-      buttons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          const picked = Number(btn.dataset.index);
-          buttons.forEach(b => { b.disabled = true; });
-          buttons[answer].classList.add('correct');
-          if (picked === answer) {
-            correct++;
-          } else {
-            btn.classList.add('wrong');
-          }
-          qEl.querySelector('.explain').hidden = false;
-          scoreEl.textContent = `${correct} / ${total} correct`;
-        });
-      });
-    });
-
-    panel.querySelector('.reset').addEventListener('click', () => {
-      correct = 0;
-      scoreEl.textContent = `0 / ${total} correct`;
-      panel.querySelectorAll('.choice').forEach(b => {
-        b.disabled = false;
-        b.classList.remove('correct', 'wrong');
-      });
-      panel.querySelectorAll('.explain').forEach(e => { e.hidden = true; });
-    });
-  }
-
-  // Pull the first number out of what someone typed ("29.7 m/s" -> 29.7).
-  function parseNumber(str) {
-    const m = String(str).replace(/,/g, '').replace(/−/g, '-').match(/[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?/i);
-    return m ? parseFloat(m[0]) : NaN;
-  }
-
-  function isClose(got, want, tol) {
-    if (want === 0) return Math.abs(got) <= 0.01;
-    return Math.abs(got - want) <= Math.abs(want) * tol;
-  }
-
-  function renderProblems(panel, data) {
-    panel.innerHTML = `
-      ${placeholder(data)}
-      <p class="lede">Type your answer (numbers only, units are shown). Answers within about 2% count, so rounding is fine. Stuck? Reveal one step at a time.</p>
-      <ol class="question-list">
-        ${data.problems.map((p, i) => `
-          <li class="card problem">
-            <p class="q-num">Problem ${i + 1}</p>
-            <p>${p.question}</p>
-            ${p.parts.map((part, j) => `
-              <div class="part" data-value="${part.value}" data-tol="${part.tolerance ?? 0.02}">
-                <label class="part-label" for="p${i}-${j}">${part.label}</label>
-                <span class="input-row">
-                  <input id="p${i}-${j}" type="text" inputmode="decimal" autocomplete="off" placeholder="Your answer">
-                  ${part.unit ? `<span class="unit">${part.unit}</span>` : ''}
-                </span>
-                <span class="feedback" aria-live="polite"></span>
-              </div>`).join('')}
-            <div class="actions">
-              <button class="btn check" type="button">Check</button>
-              <button class="btn secondary step" type="button">Show step 1 of ${p.steps.length}</button>
-              <button class="btn ghost reset" type="button">Reset</button>
-            </div>
-            <ol class="steps">${p.steps.map(s => `<li hidden>${s}</li>`).join('')}</ol>
-          </li>`).join('')}
-      </ol>
-    `;
-
-    panel.querySelectorAll('.problem').forEach(pEl => {
-      const parts = pEl.querySelectorAll('.part');
-      const steps = pEl.querySelectorAll('.steps li');
-      const stepBtn = pEl.querySelector('.step');
-      let shown = 0;
-
-      function check() {
-        parts.forEach(part => {
-          const fb = part.querySelector('.feedback');
-          const raw = part.querySelector('input').value.trim();
-          fb.className = 'feedback';
-          if (!raw) { fb.textContent = ''; return; }
-          const got = parseNumber(raw);
-          if (Number.isNaN(got)) {
-            fb.textContent = 'Enter a number.';
-            fb.classList.add('bad');
-          } else if (isClose(got, Number(part.dataset.value), Number(part.dataset.tol))) {
-            fb.textContent = '✓ Correct!';
-            fb.classList.add('good');
-          } else {
-            fb.textContent = '✗ Not quite. Check your signs and units, or reveal a step.';
-            fb.classList.add('bad');
-          }
-        });
-      }
-
-      pEl.querySelector('.check').addEventListener('click', check);
-      parts.forEach(part => {
-        part.querySelector('input').addEventListener('keydown', e => {
-          if (e.key === 'Enter') check();
-        });
-      });
-
-      stepBtn.addEventListener('click', () => {
-        if (shown >= steps.length) return;
-        steps[shown].hidden = false;
-        shown++;
-        if (shown >= steps.length) {
-          stepBtn.textContent = 'All steps shown';
-          stepBtn.disabled = true;
-        } else {
-          stepBtn.textContent = `Show step ${shown + 1} of ${steps.length}`;
-        }
-      });
-
-      pEl.querySelector('.reset').addEventListener('click', () => {
-        shown = 0;
-        steps.forEach(s => { s.hidden = true; });
-        stepBtn.disabled = false;
-        stepBtn.textContent = `Show step 1 of ${steps.length}`;
-        parts.forEach(part => {
-          part.querySelector('input').value = '';
-          const fb = part.querySelector('.feedback');
-          fb.textContent = '';
-          fb.className = 'feedback';
-        });
-      });
-    });
-  }
-
   // ---------- boot ----------
+
+  window.SP = { UNITS, PAGES, el, esc, shuffle, typeset, Progress };
 
   const page = document.body.dataset.page;
   const main = document.querySelector('main');
   renderHeader(page);
-
   if (page === 'home') renderHome(main);
-  else if (page === 'formulas') renderFormulaSheet(main);
-  else renderUnit(main, page);
+  if (page === 'formulas') renderFormulaSheet(main);
 })();
