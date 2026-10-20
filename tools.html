@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Units & Sig Figs · Siena Physics</title>
+  <meta name="description" content="Unit converter and significant-figure helpers for physics class.">
+  <meta name="theme-color" content="#0d3d2c">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Fraunces:opsz,wght@9..144,650;9..144,700&display=swap">
+  <link rel="stylesheet" href="assets/style.css">
+  <script defer src="assets/app.js"></script>
+  <script defer src="assets/tools.js"></script>
+</head>
+<body data-page="tools">
+  <main>
+    <p class="eyebrow">Free points</p>
+    <h1>Units &amp; Sig Figs</h1>
+    <p class="lede">Unit slips and sig-fig rounding cost points on every test. Check your work here.</p>
+
+    <h2 id="converter">Unit converter</h2>
+    <div class="card">
+      <div class="num-row" style="margin-bottom:12px">
+        <label class="part-label" for="conv-cat" style="margin:0">Quantity</label>
+        <select id="conv-cat"></select>
+      </div>
+      <div class="conv-row">
+        <div class="field">
+          <label class="part-label" for="conv-from" style="margin:0">From</label>
+          <div><input id="conv-from" type="text" inputmode="decimal" autocomplete="off"><select id="conv-from-unit" aria-label="From unit"></select></div>
+        </div>
+        <button class="btn ghost small swap" id="conv-swap" type="button" aria-label="Swap units">⇄</button>
+        <div class="field">
+          <label class="part-label" for="conv-to" style="margin:0">To</label>
+          <div><input id="conv-to" type="text" inputmode="decimal" autocomplete="off"><select id="conv-to-unit" aria-label="To unit"></select></div>
+        </div>
+      </div>
+      <div id="conv-how" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <h3>Conversions worth memorizing</h3>
+      <ul style="margin:0">
+        <li>km/h → m/s: divide by 3.6 (100 km/h ≈ 27.8 m/s)</li>
+        <li>1 mi = 1609 m · 1 ft = 0.3048 m · 1 in = 2.54 cm</li>
+        <li>1 kg weighs 9.8 N on Earth · 1 kg ≈ 2.2 lb</li>
+        <li>Grams → kilograms before using F = ma: 250 g = 0.250 kg</li>
+        <li>Minutes and hours → seconds before using the Big 3</li>
+      </ul>
+    </div>
+
+    <h2 id="sigfigs">Significant figure counter</h2>
+    <div class="card">
+      <div class="num-row">
+        <label class="part-label" for="sf-input" style="margin:0">Number</label>
+        <input id="sf-input" type="text" inputmode="decimal" value="0.004050" autocomplete="off" style="flex:1;min-width:0">
+        <label class="part-label" for="sf-round" style="margin:0">Round to</label>
+        <select id="sf-round"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+      </div>
+      <div id="sf-out"></div>
+    </div>
+
+    <h2>Sig figs in calculations</h2>
+    <div class="card">
+      <div class="num-row">
+        <input id="op-a" type="text" inputmode="decimal" value="12.5" aria-label="First number" style="width:110px">
+        <select id="op" aria-label="Operation"><option>×</option><option>÷</option><option>+</option><option>−</option></select>
+        <input id="op-b" type="text" inputmode="decimal" value="3.1" aria-label="Second number" style="width:110px">
+      </div>
+      <div id="op-out" style="margin-top:12px"></div>
+    </div>
+
+    <h2>Quick drill: how many sig figs?</h2>
+    <div class="card">
+      <div class="digits" id="drill-q"></div>
+      <div class="num-row">
+        <input id="drill-in" type="text" inputmode="numeric" autocomplete="off" aria-label="Number of significant figures" style="width:90px">
+        <button class="btn" id="drill-check" type="button">Check</button>
+        <button class="btn ghost" id="drill-next" type="button">Skip</button>
+        <span class="muted">Score: <strong id="drill-score">0 / 0</strong></span>
+      </div>
+      <span class="feedback" id="drill-fb" aria-live="polite"></span>
+    </div>
+
+    <h2>The rules</h2>
+    <div class="card">
+      <ol class="rules" style="margin:0">
+        <li>Non-zero digits always count: <strong>4.56</strong> has 3.</li>
+        <li>Zeros <em>between</em> non-zero digits count: <strong>4005</strong> has 4.</li>
+        <li>Leading zeros never count: <strong>0.0045</strong> has 2.</li>
+        <li>Trailing zeros count only if there's a decimal point: <strong>45.00</strong> has 4, <strong>4500.</strong> has 4, but <strong>4500</strong> is ambiguous (assume 2).</li>
+        <li>In scientific notation, every digit in the front number counts: <strong>3.00 × 10⁸</strong> has 3.</li>
+        <li>× and ÷: answer gets the <em>fewest sig figs</em> of the inputs. + and −: answer gets the <em>fewest decimal places</em>.</li>
+        <li>Don't round in the middle of a problem. Keep extra digits and round only the final answer (usually to 3 sig figs).</li>
+      </ol>
+    </div>
+  </main>
+</body>
+</html>

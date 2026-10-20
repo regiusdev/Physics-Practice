@@ -2,30 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Siena Physics</title>
-  <meta name="description" content="Study notes, practice quizzes and problems for Siena physics (Giancoli 7th ed.).">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Siena Physics · Study Hub</title>
+  <meta name="description" content="Free study site for Siena physics (Giancoli 7th ed.): notes, simulations, quizzes, and endless practice problems.">
+  <meta name="theme-color" content="#0d3d2c">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Fraunces:opsz,wght@9..144,650;9..144,700&display=swap">
   <link rel="stylesheet" href="assets/style.css">
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
   <script defer src="assets/app.js"></script>
 </head>
 <body data-page="home">
   <main>
-    <p class="eyebrow">Giancoli · Physics, 7th edition</p>
-    <h1>Siena Physics Study Hub</h1>
-    <p class="lede">Notes, worked examples, quizzes, and practice problems for each unit. Pick a unit to start.</p>
+    <section class="hero">
+      <p class="eyebrow">Giancoli · Physics, 7th edition</p>
+      <h1>Practice physics until it clicks.</h1>
+      <p class="lede">Notes, worked examples, quick quizzes, and practice problems that get new numbers every time. Built for our class and our tests. No login, works on your phone.</p>
+    </section>
     <h2>Units</h2>
     <div class="unit-grid" id="unit-grid"></div>
+    <h2>Study tools</h2>
+    <div class="unit-grid">
+      <a class="card unit-card" href="test.html"><span class="num" aria-hidden="true">✎</span><span><h3>Test Prep</h3><p>Pick units and get a mixed practice test, with an optional timer. Graded at the end.</p></span></a>
+      <a class="card unit-card" href="formulas.html"><span class="num" aria-hidden="true">Σ</span><span><h3>Formula Sheet</h3><p>Every key equation on one page. Printable.</p></span></a>
+      <a class="card unit-card" href="tools.html"><span class="num" aria-hidden="true">⇄</span><span><h3>Units &amp; Sig Figs</h3><p>Unit converter, sig-fig counter, rounding rules, and a quick drill.</p></span></a>
+      <a class="card unit-card" href="search.html"><span class="num" aria-hidden="true">⌕</span><span><h3>Search</h3><p>Find any formula, concept, example, or problem across all units.</p></span></a>
+    </div>
     <h2>How each unit works</h2>
     <div class="card">
-      <p><strong>Notes</strong>: key formulas and short concept summaries.</p>
-      <p><strong>Examples</strong>: worked problems; tap to reveal the solution.</p>
-      <p><strong>Quiz</strong>: multiple choice with instant feedback and explanations.</p>
-      <p style="margin:0"><strong>Problems</strong>: type your answer and check it, or reveal the solution one step at a time.</p>
+      <p><strong>Notes</strong>: key formulas, short concept summaries with diagrams, interactive simulations, and the common mistakes that cost points.</p>
+      <p><strong>Examples</strong>: worked problems from class. Try them yourself, then reveal the solution.</p>
+      <p><strong>Quiz</strong>: 10 random multiple-choice questions with an explanation after every answer.</p>
+      <p style="margin:0"><strong>Problems</strong>: type your answer and check it. Stuck? Get a hint, then reveal the solution one step at a time. Hit <em>New numbers</em> for endless practice.</p>
     </div>
+    <p class="muted small" style="margin-top:24px">Your quiz scores, solved problems and checkmarks are saved in this browser only. <button class="btn ghost small" id="reset-progress" type="button">Reset my progress</button></p>
   </main>
 </body>
 </html>
