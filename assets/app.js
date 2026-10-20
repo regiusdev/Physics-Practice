@@ -286,7 +286,8 @@
     document.body.append(el(`
       <footer class="site-footer">
         Made for Siena physics · Giancoli, <em>Physics</em> 7th ed.<br>
-        Progress is saved on this device only. No accounts, no tracking.
+        Progress is saved on this device only. No accounts, no tracking.<br>
+        © ${new Date().getFullYear()} Axel Eration
       </footer>
     `));
 
