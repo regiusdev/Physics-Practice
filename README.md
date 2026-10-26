@@ -5,7 +5,7 @@ Plain HTML/CSS/JS. No build step, no framework, so it runs straight on GitHub Pa
 
 ## What's on it
 
-- **Unit pages** (1D Kinematics, 2D Kinematics & Vectors, Forces), each with four tabs:
+- **Unit pages** (1D Kinematics, 2D Kinematics & Vectors, Forces, Torque & Statics, Circular Motion & Gravity), each with four tabs:
   - **Notes**: key formulas, concept summaries with diagrams, interactive simulations, common mistakes
   - **Examples**: worked problems from class, solutions hidden until tapped
   - **Quiz**: 10 random multiple-choice questions per round, explanation after every answer
@@ -26,7 +26,7 @@ Plain HTML/CSS/JS. No build step, no framework, so it runs straight on GitHub Pa
 ## Files
 
 ```
-index.html, kinematics-1d.html, kinematics-2d.html, forces.html,
+index.html, kinematics-1d.html, kinematics-2d.html, forces.html, statics.html, circular.html,
 formulas.html, test.html, tools.html, search.html   thin page shells
 assets/style.css      all styling; every theme is a block of color variables at the top
 assets/app.js         header/nav, dark mode, progress storage, on-demand math loading, unit list

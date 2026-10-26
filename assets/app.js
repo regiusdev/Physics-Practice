@@ -38,6 +38,24 @@
       num: '4',
       blurb: 'Free-body diagrams, friction, inclines, tension, and elevators.',
     },
+    {
+      id: 'statics',
+      href: 'statics.html',
+      title: 'Torque & Statics',
+      short: 'Statics',
+      chapter: 'Chapter 9',
+      num: '9',
+      blurb: 'Torque and lever arms, center of mass, and beams, ladders and arms in balance.',
+    },
+    {
+      id: 'circular',
+      href: 'circular.html',
+      title: 'Circular Motion & Gravity',
+      short: 'Circular',
+      chapter: 'Chapter 5',
+      num: '5',
+      blurb: "Centripetal force, curves and loops, Newton's gravitation, orbits and Kepler.",
+    },
   ];
 
   const PAGES = [
@@ -265,6 +283,7 @@
     mobileNav.id = 'site-nav-mobile';
     mobileNav.classList.remove('inline');
     header.append(mobileNav);
+    inlineNav.querySelector('a[href="index.html"]').parentElement.remove();
     inlineNav.querySelectorAll('a').forEach(a => {
       const match = [...UNITS, ...PAGES].find(x => x.href === a.getAttribute('href'));
       if (match) a.textContent = match.short;
