@@ -216,6 +216,47 @@ main.wide { max-width: 1120px; }
   .site-nav.inline .nav-group { display: none; }
 }
 
+/* ---------- units dropdown (desktop) ---------- */
+
+.dd { position: relative; }
+.dd-btn {
+  appearance: none; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 0.92rem; font-weight: 500; color: var(--muted);
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 7px 10px 7px 12px; border-radius: 10px;
+  transition: background-color 0.15s, color 0.15s;
+}
+.dd-btn:hover, .dd-btn[aria-expanded="true"] { color: var(--ink); background: var(--surface-2); }
+.dd-btn[aria-current="page"] { color: var(--ink); }
+.dd-btn .chev { width: 15px; height: 15px; transition: transform 0.15s; }
+.dd-btn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.dd-menu {
+  position: absolute; left: 0; top: calc(100% + 8px);
+  min-width: 270px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  animation: pop 0.14s ease-out;
+}
+.site-nav.inline .dd-menu a {
+  display: flex; align-items: center; justify-content: flex-start; gap: 12px;
+  text-align: left;
+  padding: 8px 10px; border-radius: 10px;
+  color: var(--ink); background: none;
+}
+.site-nav.inline .dd-menu a:hover, .site-nav.inline .dd-menu a:focus-visible { background: var(--surface-2); color: var(--ink); }
+.site-nav.inline .dd-menu a[aria-current="page"] { background: var(--accent-soft); }
+.dd-num {
+  flex: none; width: 30px; height: 30px; border-radius: 8px;
+  display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent);
+  font-weight: 650; font-size: 0.95rem;
+}
+.dd-title { display: block; font-weight: 600; font-size: 0.93rem; line-height: 1.25; }
+.dd-sub { display: block; font-size: 0.78rem; color: var(--muted); }
+
 /* ---------- theme picker ---------- */
 
 .theme-panel {
