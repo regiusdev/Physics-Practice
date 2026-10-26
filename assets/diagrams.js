@@ -416,6 +416,187 @@
     return svg(W, Hh, body, 'Boat crossing a river with a current');
   };
 
+  // ---------- statics ----------
+
+  const fmtLen = v => String(Math.round(v * 100) / 100);
+
+  FIGS.beam = ({ length = 1, supports = [], loads = [], wall = null, strut = null, dims = false, unit = 'm' }) => {
+    const W = 300, S = W / length, X = x => x * S;
+    const pts = [[0, -20], [W, 40]];
+    let body = '';
+    const ceilY = -96;
+    if (wall) {
+      const wx = wall === 'left' ? -14 : W;
+      body += `<rect x="${wx}" y="-130" width="14" height="190" class="ramp"/>`;
+      pts.push([wx - 4, -130], [wx + 18, 60]);
+    }
+    if (strut) {
+      const bx = X(strut.x), wx = wall === 'right' ? W : 0;
+      const dy = Math.abs(bx - wx) * Math.tan((strut.angle || 30) * D2R);
+      const top = Math.max(-dy, -125);
+      body += `<line x1="${n1(bx)}" y1="0" x2="${wx}" y2="${n1(top)}" class="s-ink" stroke-width="1.8"/>`;
+      // label near the wall end of the wire, angle just inside the corner it makes with the beam
+      const lx = wx + (bx - wx) * 0.22, ly = top * 0.78;
+      body += text(lx + (wx < bx ? 4 : -4), ly - 12, strut.label || 'T', { anchor: wx < bx ? 'start' : 'end', cls: 't-a', bold: true });
+      body += text(bx + (wx < bx ? -40 : 40), -9, `${strut.angle}°`, { size: 12 });
+      pts.push([wx, top]);
+    }
+    supports.forEach(sp => {
+      const x = X(sp.x);
+      if (sp.kind === 'cable') {
+        body += `<line x1="${n1(x)}" y1="0" x2="${n1(x)}" y2="${ceilY}" class="s-ink" stroke-width="1.8"/>` +
+          `<line x1="${n1(x - 18)}" y1="${ceilY}" x2="${n1(x + 18)}" y2="${ceilY}" class="s-ink" stroke-width="3"/>`;
+        const right = x > W / 2;
+        if (sp.label) body += text(x + (right ? -7 : 7), ceilY / 2, sp.label, { anchor: right ? 'end' : 'start', cls: 't-a', bold: true });
+        pts.push([x, ceilY - 6]);
+      } else if (sp.kind === 'hinge') {
+        body += `<circle cx="${n1(x)}" cy="5" r="5" class="f-ink"/>`;
+        if (sp.label) body += text(x + (x < W / 2 ? 10 : -10), 26, sp.label, { anchor: x < W / 2 ? 'start' : 'end', size: 12, bold: true });
+      } else {
+        body += `<polygon points="${n1(x)},10 ${n1(x - 12)},32 ${n1(x + 12)},32" class="body"/>`;
+        if (sp.label) body += text(x, 46, sp.label, { size: 12, bold: true });
+        pts.push([x, 52]);
+      }
+    });
+    body += `<rect x="0" y="0" width="${W}" height="10" rx="2" class="body"/>`;
+    loads.forEach(ld => {
+      const x = X(ld.x), kind = ld.kind || 'mass';
+      if (kind === 'arrow') {
+        const up = ld.dir === 'up';
+        body += up ? arrow(x, -4, x, -58, 'r') + text(x, -70, ld.label || '', { cls: 't-r', bold: true })
+          : arrow(x, -58, x, -2, 'r') + text(x, -70, ld.label || '', { cls: 't-r', bold: true });
+        pts.push([x - 30, -80], [x + 30, -80]);
+      } else if (kind === 'person') {
+        body += `<circle cx="${n1(x)}" cy="-52" r="7" class="s-ink" fill="none" stroke-width="2"/><line x1="${n1(x)}" y1="-45" x2="${n1(x)}" y2="-22" class="s-ink" stroke-width="2"/><line x1="${n1(x)}" y1="-22" x2="${n1(x - 7)}" y2="0" class="s-ink" stroke-width="2"/><line x1="${n1(x)}" y1="-22" x2="${n1(x + 7)}" y2="0" class="s-ink" stroke-width="2"/><line x1="${n1(x - 10)}" y1="-38" x2="${n1(x + 10)}" y2="-38" class="s-ink" stroke-width="2"/>`;
+        if (ld.label) body += text(x, -70, ld.label, { size: 12, bold: true });
+        pts.push([x - 30, -80], [x + 30, -80]);
+      } else {
+        body += `<line x1="${n1(x)}" y1="10" x2="${n1(x)}" y2="34" class="s-ink" stroke-width="1.5"/>` +
+          `<rect x="${n1(x - 22)}" y="34" width="44" height="26" rx="3" class="body"/>` + text(x, 47, ld.label || '', { size: 11, bold: true });
+        pts.push([x - 26, 64], [x + 26, 64]);
+      }
+    });
+    if (dims) {
+      const xs = [...new Set([0, length, ...loads.map(l => l.x), ...supports.map(sp => sp.x), ...(strut ? [strut.x] : [])])].sort((a, b) => a - b);
+      const dy = 84;
+      body += `<line x1="0" y1="${dy}" x2="${W}" y2="${dy}" class="s-ink" stroke-width="1" opacity="0.7"/>`;
+      xs.forEach((v, i) => {
+        body += `<line x1="${n1(X(v))}" y1="${dy - 5}" x2="${n1(X(v))}" y2="${dy + 5}" class="s-ink" stroke-width="1"/>`;
+        if (i && X(v) - X(xs[i - 1]) > 22) body += text((X(v) + X(xs[i - 1])) / 2, dy + 14, `${fmtLen(v - xs[i - 1])} ${unit}`, { size: 11 });
+      });
+      pts.push([0, dy + 24]);
+    }
+    const b = bounds(pts, 16);
+    return svg(b.w, b.h, body, 'Beam in static equilibrium', b.minX, b.minY);
+  };
+
+  FIGS.ladder = ({ angle = 60, person = null, forces = true }) => {
+    const L = 230, t = angle * D2R;
+    const top = [L * Math.cos(t), -L * Math.sin(t)];
+    let body = `<line x1="-40" y1="0" x2="${n1(top[0] + 14)}" y2="0" class="s-ink" stroke-width="2"/>` +
+      `<rect x="${n1(top[0] + 2)}" y="${n1(top[1] - 30)}" width="12" height="${n1(-top[1] + 30)}" class="ramp"/>`;
+    const ux = Math.cos(t), uy = -Math.sin(t), nx = -uy * 5, ny = ux * 5;
+    body += `<line x1="${n1(nx)}" y1="${n1(ny)}" x2="${n1(top[0] + nx)}" y2="${n1(top[1] + ny)}" class="s-ink" stroke-width="2"/><line x1="${n1(-nx)}" y1="${n1(-ny)}" x2="${n1(top[0] - nx)}" y2="${n1(top[1] - ny)}" class="s-ink" stroke-width="2"/>`;
+    for (let i = 1; i < 10; i++) { const px = top[0] * i / 10, py = top[1] * i / 10; body += `<line x1="${n1(px + nx)}" y1="${n1(py + ny)}" x2="${n1(px - nx)}" y2="${n1(py - ny)}" class="s-ink" stroke-width="1.5"/>`; }
+    body += `<path d="M 40 0 A 40 40 0 0 0 ${n1(40 * Math.cos(t))} ${n1(-40 * Math.sin(t))}" class="s-ink" fill="none" stroke-width="1.4"/>` + text(48, -12, `θ = ${angle}°`, { anchor: 'start', size: 12 });
+    if (person != null) {
+      const px = top[0] * person, py = top[1] * person;
+      body += `<circle cx="${n1(px)}" cy="${n1(py - 34)}" r="6" class="f-r"/><line x1="${n1(px)}" y1="${n1(py - 28)}" x2="${n1(px)}" y2="${n1(py - 8)}" class="s-r" stroke-width="2.4"/>`;
+      if (forces) body += arrow(px + 12, py - 16, px + 12, py + 40, 'b') + text(px + 18, py + 34, 'Mg', { anchor: 'start', cls: 't-b', bold: true });
+    }
+    if (forces) {
+      const mx = top[0] / 2, my = top[1] / 2;
+      body += arrow(mx, my, mx, my + 56, 'b') + text(mx - 8, my + 50, 'mg', { anchor: 'end', cls: 't-b', bold: true });
+      body += arrow(top[0], top[1], top[0] - 56, top[1], 'a') + text(top[0] - 62, top[1], 'F_W', { anchor: 'end', cls: 't-a', bold: true });
+      body += arrow(0, 0, 0, -62, 'a') + text(-8, -60, 'F_N', { anchor: 'end', cls: 't-a', bold: true });
+      body += arrow(0, 4, 50, 4, 'f') + text(26, 20, 'F_fr', { cls: 't-f', bold: true });
+    }
+    const b = bounds([[-60, 30], [top[0] + 20, top[1] - 34], [-60, top[1] - 34]], 14);
+    return svg(b.w, b.h, body, `Ladder leaning at ${angle}° against a wall`, b.minX, b.minY);
+  };
+
+  // ---------- circular motion ----------
+
+  FIGS.circle = ({ show = ['v', 'a'], label = 'F_c' }) => {
+    const R = 90, phi = 35 * D2R;
+    const P = [R * Math.cos(phi), -R * Math.sin(phi)];
+    const tx = -Math.sin(phi), ty = -Math.cos(phi); // CCW tangent in SVG coords
+    let body = `<circle cx="0" cy="0" r="${R}" fill="none" class="s-ink" stroke-width="1.5" stroke-dasharray="5 5"/><circle cx="0" cy="0" r="3" class="f-ink"/>` +
+      text(0, 14, 'center', { size: 11 });
+    body += `<path d="M ${n1(R * Math.cos(-60 * D2R))} ${n1(-R * Math.sin(-60 * D2R))} A ${R} ${R} 0 0 0 ${n1(R * Math.cos(-20 * D2R))} ${n1(-R * Math.sin(-20 * D2R))}" fill="none" class="s-ink" stroke-width="2"/>`;
+    body += arrow(R * Math.cos(-25 * D2R) - 3, -R * Math.sin(-25 * D2R) - 6, R * Math.cos(-20 * D2R) + 1, -R * Math.sin(-20 * D2R) - 2, 'ink', { head: 8, width: 2 });
+    if (show.includes('v')) body += arrow(P[0], P[1], P[0] + tx * 62, P[1] + ty * 62, 'b') + tipLabel(P[0], P[1], P[0] + tx * 62, P[1] + ty * 62, 'v', 'b');
+    const inward = show.includes('a') || show.includes('F');
+    if (inward) {
+      const lab = show.includes('a') && show.includes('F') ? `${label}, a_c` : show.includes('F') ? label : 'a_c';
+      const ex = P[0] * 0.42, ey = P[1] * 0.42;
+      body += arrow(P[0], P[1], ex, ey, 'r') + text(ex + 4, ey + 16, lab, { anchor: 'start', cls: 't-r', bold: true });
+    }
+    body += `<circle cx="${n1(P[0])}" cy="${n1(P[1])}" r="8" class="f-a"/>`;
+    return svg(260, 250, body, 'Object moving in a circle: velocity tangent, acceleration toward the center', -130, -125);
+  };
+
+  FIGS.banked = ({ angle = 20, friction = 'none' }) => {
+    const g = rampGeometry(angle, 260);
+    const blk = blockOnRamp(g, g.L * 0.55, 56, 30, '');
+    const [px, py] = blk.P;
+    let body = rampSvg(g, angle) + blk.svg;
+    const N = 80;
+    body += arrow(px, py, px + g.nrm[0] * N, py + g.nrm[1] * N, 'a') + tipLabel(px, py, px + g.nrm[0] * N, py + g.nrm[1] * N, 'F_N', 'a');
+    body += arrow(px, py, px, py + 72, 'b') + text(px + 8, py + 70, 'mg', { anchor: 'start', cls: 't-b', bold: true });
+    if (friction !== 'none') {
+      const s = friction === 'up' ? 1 : -1;
+      body += arrow(px, py, px + g.u[0] * 52 * s, py + g.u[1] * 52 * s, 'f') + tipLabel(px, py, px + g.u[0] * 52 * s, py + g.u[1] * 52 * s, 'F_fr', 'f');
+    }
+    const cy = 30;
+    body += arrow(g.B[0] - 20, cy, 30, cy, 'r', { dash: true }) + text(26, cy, 'to center of turn', { anchor: 'end', size: 11, cls: 't-r' });
+    const b = bounds([g.A, g.B, g.C, [-130, cy + 12], [px - 70, py + g.nrm[1] * N - 20]], 14);
+    return svg(b.w, b.h, body, `Car on a curve banked at ${angle}°`, b.minX, b.minY);
+  };
+
+  FIGS.loop = () => {
+    const R = 90;
+    let body = `<circle cx="0" cy="0" r="${R}" fill="none" class="s-ink" stroke-width="3"/><circle cx="0" cy="0" r="3" class="f-ink"/>`;
+    // car at the top (inside the loop, upside down) and at the bottom
+    body += `<rect x="-14" y="${-R + 3}" width="28" height="14" rx="4" class="body"/><rect x="-14" y="${R - 17}" width="28" height="14" rx="4" class="body"/>`;
+    body += arrow(-8, -R + 17, -8, -R + 62, 'a') + text(-14, -R + 54, 'F_N', { anchor: 'end', cls: 't-a', bold: true });
+    body += arrow(8, -R + 17, 8, -R + 62, 'b') + text(14, -R + 54, 'mg', { anchor: 'start', cls: 't-b', bold: true });
+    body += text(0, -R - 14, 'top: both point down (to center)', { size: 11 });
+    body += arrow(-8, R - 17, -8, R - 72, 'a') + text(-14, R - 64, 'F_N', { anchor: 'end', cls: 't-a', bold: true });
+    body += arrow(8, R - 3, 8, R + 40, 'b') + text(14, R + 36, 'mg', { anchor: 'start', cls: 't-b', bold: true });
+    body += text(0, R + 58, 'bottom: F_N up, mg down', { size: 11 });
+    return svg(300, 300, body, 'Vertical loop: forces at the top and bottom', -150, -130);
+  };
+
+  FIGS.conical = ({ angle = 30 }) => {
+    const L = 170, t = angle * D2R;
+    const bx = L * Math.sin(t), by = L * Math.cos(t);
+    let body = `<line x1="-60" y1="0" x2="120" y2="0" class="s-ink" stroke-width="3"/>`;
+    body += `<line x1="0" y1="0" x2="0" y2="${n1(by + 10)}" class="s-ink" stroke-width="1.2" stroke-dasharray="4 4"/>`;
+    body += `<ellipse cx="0" cy="${n1(by)}" rx="${n1(bx)}" ry="14" fill="none" class="s-ink" stroke-width="1.2" stroke-dasharray="5 4"/>`;
+    body += `<line x1="0" y1="${n1(by)}" x2="${n1(bx)}" y2="${n1(by)}" class="s-ink" stroke-width="1.2" stroke-dasharray="4 4"/>` + text(bx / 2, by + 26, 'r', { bold: true });
+    body += `<line x1="0" y1="0" x2="${n1(bx)}" y2="${n1(by)}" class="s-ink" stroke-width="1.8"/>` + text(bx / 2 - 8, by / 2 + 4, 'L', { anchor: 'end', bold: true });
+    body += `<path d="M 0 40 A 40 40 0 0 0 ${n1(40 * Math.sin(t))} ${n1(40 * Math.cos(t))}" fill="none" class="s-ink" stroke-width="1.3"/>` + text(14, 56, 'θ', { anchor: 'start', size: 13 });
+    const tx = -Math.sin(t), ty = -Math.cos(t);
+    body += arrow(bx, by, bx + tx * 64, by + ty * 64, 'a') + text(bx + tx * 64 + 10, by + ty * 64, 'T', { anchor: 'start', cls: 't-a', bold: true });
+    body += arrow(bx, by, bx, by + 60, 'b') + text(bx + 8, by + 56, 'mg', { anchor: 'start', cls: 't-b', bold: true });
+    body += `<circle cx="${n1(bx)}" cy="${n1(by)}" r="9" class="f-r"/>`;
+    const b = bounds([[-70, -6], [bx + 50, by + 70], [-bx - 10, by + 20]], 10);
+    return svg(b.w, b.h, body, 'Conical pendulum', b.minX, b.minY);
+  };
+
+  FIGS.orbit = ({ label: lbl = 'satellite', planet = 'Earth' }) => {
+    const R = 105, phi = 40 * D2R;
+    const P = [R * Math.cos(phi), -R * Math.sin(phi)];
+    let body = `<circle cx="0" cy="0" r="${R}" fill="none" class="s-ink" stroke-width="1.4" stroke-dasharray="5 5"/>`;
+    body += `<circle cx="0" cy="0" r="38" class="f-b" opacity="0.28"/><circle cx="0" cy="0" r="38" fill="none" class="s-b" stroke-width="2"/>` + text(0, 0, planet, { size: 12, bold: true });
+    const tx = -Math.sin(phi), ty = -Math.cos(phi);
+    body += arrow(P[0], P[1], P[0] + tx * 60, P[1] + ty * 60, 'b') + tipLabel(P[0], P[1], P[0] + tx * 60, P[1] + ty * 60, 'v', 'b');
+    body += arrow(P[0], P[1], P[0] * 0.5, P[1] * 0.5, 'a') + text(P[0] * 0.5 + 8, P[1] * 0.5 + 12, 'F_g', { anchor: 'start', cls: 't-a', bold: true });
+    body += `<rect x="${n1(P[0] - 7)}" y="${n1(P[1] - 7)}" width="14" height="14" rx="2" class="f-r"/>` + text(P[0] + 12, P[1] - 14, lbl, { anchor: 'start', size: 11 });
+    return svg(300, 270, body, 'Satellite in a circular orbit', -140, -135);
+  };
+
   // ---------- public ----------
 
   function render(spec) {

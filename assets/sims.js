@@ -436,12 +436,181 @@
     draw();
   }
 
+  // ---------- Statics: torque balance ----------
+
+  function torqueBalance(container) {
+    const state = { m1: 0.3, x1: 20, m2: 0.2, x2: 80, pivot: 50, stick: 0 };
+    const units = { m1: 'kg', x1: 'cm', m2: 'kg', x2: 'cm', pivot: 'cm', stick: 'kg' };
+    const card = el(`
+      <div class="card sim">
+        <h3>Torque balance: meter stick</h3>
+        <p class="muted small">Each mass makes a torque τ = mg × (distance from the pivot). Masses left of the pivot twist it counter-clockwise, masses on the right twist it clockwise. It balances when the two add up to the same amount.</p>
+        <div class="stage"></div>
+        <div class="controls">
+          ${slider('m1', 'Mass A', 0, 1, 0.05, state.m1, 'kg')}
+          ${slider('x1', 'Position of A', 0, 100, 1, state.x1, 'cm')}
+          ${slider('m2', 'Mass B', 0, 1, 0.05, state.m2, 'kg')}
+          ${slider('x2', 'Position of B', 0, 100, 1, state.x2, 'cm')}
+          ${slider('pivot', 'Pivot position', 0, 100, 1, state.pivot, 'cm')}
+          ${slider('stick', 'Stick mass (acts at 50 cm)', 0, 0.5, 0.05, state.stick, 'kg')}
+        </div>
+        <p class="verdict-line" aria-live="polite"></p>
+        <div class="readout"></div>
+      </div>`);
+    container.append(card);
+    const stage = card.querySelector('.stage');
+    const out = card.querySelector('.readout');
+    const verdict = card.querySelector('.verdict-line');
+
+    function draw() {
+      const items = [{ m: state.m1, x: state.x1, l: 'A' }, { m: state.m2, x: state.x2, l: 'B' }, { m: state.stick, x: 50, l: 'stick' }];
+      // torque about the pivot, CCW positive: a mass left of the pivot gives +, right gives −
+      let ccw = 0, cw = 0;
+      items.forEach(it => {
+        const t = it.m * G * (state.pivot - it.x) / 100;
+        if (t > 0) ccw += t; else cw -= t;
+      });
+      const net = ccw - cw;
+      const total = items.reduce((a, it) => a + it.m, 0);
+      const xcm = total > 0 ? items.reduce((a, it) => a + it.m * it.x, 0) / total : 50;
+      const balanced = Math.abs(net) < 0.005;
+      const tilt = balanced ? 0 : Math.max(-14, Math.min(14, -net * 6));
+
+      const W = 600, X = cm => 30 + cm * 5.4, P = X(state.pivot);
+      let body = `<g transform="rotate(${tilt.toFixed(2)} ${P} 80)">`;
+      body += `<rect x="${X(0)}" y="72" width="${X(100) - X(0)}" height="14" rx="3" class="body"/>`;
+      for (let c = 0; c <= 100; c += 10) body += `<line x1="${X(c)}" y1="72" x2="${X(c)}" y2="${c % 50 ? 78 : 82}" class="s-ink" stroke-width="1"/>`;
+      items.forEach(it => {
+        if (!it.m || it.l === 'stick') return;
+        const h = 18 + it.m * 26;
+        body += `<line x1="${X(it.x)}" y1="86" x2="${X(it.x)}" y2="104" class="s-ink" stroke-width="1.5"/><rect x="${X(it.x) - 18}" y="104" width="36" height="${h}" rx="3" class="${it.l === 'A' ? 'f-a' : 'f-b'}" opacity="0.85"/>` +
+          text(X(it.x), 104 + h + 14, `${it.l}: ${it.m.toFixed(2)} kg`, { size: 12, bold: true });
+      });
+      if (state.stick) body += arrow(X(50), 60, X(50), 72, 'r', { head: 7 }) + text(X(50), 50, 'stick weight', { size: 11, cls: 't-r' });
+      body += `</g>`;
+      body += `<polygon points="${P},86 ${P - 14},112 ${P + 14},112" class="ramp"/>`;
+      body += `<line x1="${X(xcm)}" y1="40" x2="${X(xcm)}" y2="64" class="s-r" stroke-width="2" stroke-dasharray="3 3"/>` + text(X(xcm), 32, 'CM', { size: 11, cls: 't-r', bold: true });
+      stage.innerHTML = svg(W, 190, body, 'Meter stick on a pivot with two masses', 0, 0);
+      verdict.textContent = balanced ? 'Balanced! Counter-clockwise torque = clockwise torque.'
+        : `Not balanced: it tips ${net > 0 ? 'counter-clockwise (left side down)' : 'clockwise (right side down)'}. Move the pivot to the CM (${xcm.toFixed(1)} cm) to balance it.`;
+      verdict.style.color = balanced ? 'var(--good)' : 'var(--bad)';
+      out.innerHTML = readout([
+        ['CCW torque', `${ccw.toFixed(3)} N·m`],
+        ['CW torque', `${cw.toFixed(3)} N·m`],
+        ['net torque', `${net.toFixed(3)} N·m`],
+        ['center of mass', `${xcm.toFixed(1)} cm`],
+      ]);
+      ui.sync();
+    }
+    const ui = bind(card, state, units, draw);
+    draw();
+  }
+
+  // ---------- Circular motion ----------
+
+  function circularMotion(container) {
+    const state = { r: 2, v: 4, m: 1 };
+    const units = { r: 'm', v: 'm/s', m: 'kg' };
+    const card = el(`
+      <div class="card sim">
+        <h3>Circular motion: center, center, tangent</h3>
+        <p class="muted small">Velocity points along the tangent; acceleration (and the net force) point to the center. Hit <strong>Let go</strong> to remove the center-pointing force: the object flies off along the tangent, not outward. Animation is slowed down.</p>
+        <div class="stage" style="max-width:420px;margin:0 auto"></div>
+        <div class="actions" style="justify-content:center;margin-top:4px">
+          <button class="btn small play" type="button">❚❚ Pause</button>
+          <button class="btn secondary small release" type="button">Let go</button>
+        </div>
+        <div class="controls">
+          ${slider('r', 'Radius r', 0.5, 5, 0.1, state.r, 'm')}
+          ${slider('v', 'Speed v', 1, 20, 0.5, state.v, 'm/s')}
+          ${slider('m', 'Mass m', 0.1, 5, 0.1, state.m, 'kg')}
+        </div>
+        <div class="readout"></div>
+      </div>`);
+    container.append(card);
+    const stage = card.querySelector('.stage');
+    const out = card.querySelector('.readout');
+    const playBtn = card.querySelector('.play');
+    let phi = 0.6, running = true, released = null, raf = null, last = 0, visible = false;
+
+    const radiusPx = () => 40 + (state.r / 5) * 110;
+
+    function draw() {
+      const C = 170, R = radiusPx();
+      const ac = state.v * state.v / state.r;
+      let body = `<circle cx="${C}" cy="${C}" r="${R}" fill="none" class="s-ink" stroke-width="1.4" stroke-dasharray="5 5"/><circle cx="${C}" cy="${C}" r="3" class="f-ink"/>`;
+      let px, py;
+      if (released) {
+        px = released.x; py = released.y;
+        body += `<line x1="${released.x0}" y1="${released.y0}" x2="${px}" y2="${py}" class="s-r" stroke-width="1.5" stroke-dasharray="4 4"/>`;
+      } else {
+        px = C + R * Math.cos(phi); py = C - R * Math.sin(phi);
+        body += `<line x1="${C}" y1="${C}" x2="${px}" y2="${py}" class="s-ink" stroke-width="1.2" opacity="0.5"/>`;
+        const aLen = Math.min(R - 10, 18 + ac * 1.2);
+        body += arrow(px, py, px - Math.cos(phi) * aLen, py + Math.sin(phi) * aLen, 'r') + text(px - Math.cos(phi) * aLen * 0.55 + 14, py + Math.sin(phi) * aLen * 0.55, 'a_c', { cls: 't-r', bold: true, anchor: 'start' });
+      }
+      const tx = released ? released.tx : -Math.sin(phi), ty = released ? released.ty : -Math.cos(phi);
+      const vLen = 26 + state.v * 3;
+      body += arrow(px, py, px + tx * vLen, py + ty * vLen, 'b') + text(px + tx * (vLen + 14), py + ty * (vLen + 14), 'v', { cls: 't-b', bold: true });
+      body += `<circle cx="${px}" cy="${py}" r="${7 + state.m * 1.5}" class="f-a"/>`;
+      stage.innerHTML = svg(340, 340, body, 'Object moving in a circle');
+      const T = 2 * Math.PI * state.r / state.v;
+      out.innerHTML = readout([
+        ['period T = 2πr/v', `${f1(T)} s`],
+        ['a<sub>c</sub> = v²/r', `${f1(ac)} m/s²`],
+        ['F<sub>c</sub> = mv²/r', `${f1(state.m * ac)} N`],
+        ["g's", (ac / G).toFixed(2)],
+      ]);
+      ui.sync();
+    }
+
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      // slowed-down display angular speed so fast settings stay watchable
+      const w = Math.min(state.v / state.r, 10) * 0.35;
+      if (released) {
+        released.x += released.tx * w * radiusPx() * dt * 1.0;
+        released.y += released.ty * w * radiusPx() * dt * 1.0;
+        if (released.x < -40 || released.x > 380 || released.y < -40 || released.y > 380) released = null;
+      } else {
+        phi += w * dt;
+      }
+      draw();
+      raf = running && visible ? requestAnimationFrame(frame) : null;
+    }
+    function start() { if (!raf && running && visible) { last = performance.now(); raf = requestAnimationFrame(frame); } }
+
+    playBtn.addEventListener('click', () => {
+      running = !running;
+      playBtn.textContent = running ? '❚❚ Pause' : '▶ Play';
+      if (running) start();
+    });
+    card.querySelector('.release').addEventListener('click', () => {
+      if (released) return;
+      const C = 170, R = radiusPx();
+      const x = C + R * Math.cos(phi), y = C - R * Math.sin(phi);
+      released = { x, y, x0: x, y0: y, tx: -Math.sin(phi), ty: -Math.cos(phi) };
+      if (!running) { running = true; playBtn.textContent = '❚❚ Pause'; }
+      start();
+    });
+    // only animate while the sim is on screen, to save battery
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(entries => { visible = entries[0].isIntersecting; start(); }).observe(card);
+    } else { visible = true; }
+    const ui = bind(card, state, units, draw);
+    draw();
+    start();
+  }
+
   const SIMS = {
     'motion-graphs': motionGraphs,
     projectile,
     'vector-add': vectorAdd,
     'friction-push': frictionPush,
     incline,
+    'torque-balance': torqueBalance,
+    'circular-motion': circularMotion,
   };
 
   window.Sims = {

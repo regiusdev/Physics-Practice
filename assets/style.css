@@ -518,6 +518,8 @@ svg .grid { stroke: var(--border); stroke-width: 1; }
 .fig { margin: 12px 0; text-align: center; }
 .fig svg { max-width: 100%; height: auto; display: inline-block; }
 .fig svg text { font-family: var(--font); fill: var(--fig-ink); }
+/* a halo in the card color keeps labels legible where they cross lines */
+.fig svg text, .sim svg text { paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
 
 .mistake { display: grid; gap: 8px; }
 .mistake h3 { margin: 0; }

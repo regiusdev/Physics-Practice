@@ -149,6 +149,13 @@ problem says it slides, etc.). If a setup needs a condition, loop inside `gen` u
 | `vectors` | `{ vectors: [{ x: 3, y: 4, label: 'A', tail: [0, 0], kind: 'a' \| 'b' \| 'r' }], grid: true }`; `kind: 'r'` = resultant style |
 | `projectile` | `{ v0: 20, angle: 37, h: 0, components: true }` |
 | `river` | `{ across: 4, down: 3, width: '120 m' }` (boat crossing a current) |
+| `beam` | `{ length: 6, supports: [{ x: 0, kind: 'pivot' \| 'cable' \| 'hinge' \| 'finger', label: 'T_1' }], loads: [{ x: 1, label: '80 kg', kind: 'mass' \| 'arrow' \| 'person' }], wall: 'left' \| 'right', strut: { x: 4, angle: 30, label: 'T' }, dims: true }`: horizontal beam/stick/scaffold (x in the beam's own units from the left end). `cable` supports go straight up; `strut` is one angled wire from the beam up to the wall; `hinge` draws the wall pin. `dims` adds distance markers under the loads. |
+| `ladder` | `{ angle: 60, person: 0.7, forces: true }`: ladder against a frictionless wall; `person` = fraction of the way up (optional); `forces` draws F_W, F_N, F_fr, mg |
+| `circle` | `{ show: ['v', 'a', 'F'], label: 'F_c' }`: object moving counter-clockwise on a circle, v tangent, a_c / F toward the center |
+| `banked` | `{ angle: 20, friction: 'none' \| 'up' \| 'down' }`: car on a banked curve (cross-section), F_N, mg, optional friction, center of the turn marked |
+| `loop` | `{}`: vertical loop with the car at the top and bottom, F_N and mg at each |
+| `conical` | `{ angle: 30 }`: conical pendulum, string tension T, mg, radius r |
+| `orbit` | `{ label: 'satellite' }`: satellite on a circular orbit, F_g toward the planet, v tangent |
 
 ## Simulation ids (for `sims`)
 
@@ -158,3 +165,5 @@ problem says it slides, etc.). If a setup needs a condition, loop inside `gen` u
 - `vector-add`: 2D: two vectors by magnitude and angle; tip-to-tail with resultant.
 - `friction-push`: Forces: applied force vs friction (static rises to max, then kinetic).
 - `incline`: Forces: angle, μs, μk; does it slide, and how fast.
+- `torque-balance`: Statics: masses on a meter stick, positions and pivot; torques CW vs CCW and whether it balances.
+- `circular-motion`: Circular motion: radius, speed, mass; v and a_c arrows, a_c, F_c and period, plus a "let go" button that shows the tangent path.
