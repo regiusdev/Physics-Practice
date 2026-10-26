@@ -252,46 +252,75 @@
   const ICONS = {
     search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
     theme: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.8-1.9 0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2" fill="currentColor"/><circle cx="10.5" cy="7" r="1.2" fill="currentColor"/><circle cx="15" cy="7.5" r="1.2" fill="currentColor"/></svg>',
+    chevron: '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
     menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
   };
 
   function renderHeader(page) {
     const link = (p, label) => `<li><a href="${p.href}"${p.id === page ? ' aria-current="page"' : ''}>${label}</a></li>`;
+    const onUnit = UNITS.some(u => u.id === page);
     const header = el(`
       <header class="site-header">
         <div class="bar">
           <a class="brand" href="index.html"><span class="dot" aria-hidden="true"></span><span>Siena <span class="light">Physics</span></span></a>
-          <nav id="site-nav" class="site-nav inline" aria-label="Main">
+          <nav class="site-nav inline" aria-label="Main">
             <ul>
-              ${link({ id: 'home', href: 'index.html' }, 'Home')}
-              <li class="nav-group">Units</li>
-              ${UNITS.map(u => link(u, `<span class="full">${u.title}</span>`)).join('')}
-              <li class="nav-group">Study</li>
-              ${PAGES.map(p => link(p, p.title)).join('')}
+              <li class="dd">
+                <button class="dd-btn" type="button" aria-expanded="false" aria-controls="units-menu"${onUnit ? ' aria-current="page"' : ''}>
+                  Units ${ICONS.chevron}
+                </button>
+                <div class="dd-menu" id="units-menu" hidden>
+                  ${UNITS.map(u => `
+                    <a href="${u.href}"${u.id === page ? ' aria-current="page"' : ''}>
+                      <span class="dd-num">${u.num}</span>
+                      <span><span class="dd-title">${u.title}</span><span class="dd-sub">${u.chapter}</span></span>
+                    </a>`).join('')}
+                </div>
+              </li>
+              ${PAGES.map(p => link(p, p.short)).join('')}
             </ul>
           </nav>
           <a class="icon-btn" href="search.html" aria-label="Search" title="Search">${ICONS.search}</a>
           <button class="icon-btn theme-toggle" type="button" aria-label="Choose theme" title="Theme" aria-expanded="false" aria-controls="theme-panel">${ICONS.theme}</button>
           <button class="icon-btn menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="site-nav-mobile">${ICONS.menu}</button>
         </div>
+        <nav id="site-nav-mobile" class="site-nav" aria-label="Main">
+          <ul>
+            ${link({ id: 'home', href: 'index.html' }, 'Home')}
+            <li class="nav-group">Units</li>
+            ${UNITS.map(u => link(u, u.title)).join('')}
+            <li class="nav-group">Study</li>
+            ${PAGES.map(p => link(p, p.title)).join('')}
+          </ul>
+        </nav>
       </header>
     `);
 
-    // On desktop the nav sits inline in the bar using short labels; on phones it drops down full-width.
-    const inlineNav = header.querySelector('.site-nav');
-    const mobileNav = inlineNav.cloneNode(true);
-    mobileNav.id = 'site-nav-mobile';
-    mobileNav.classList.remove('inline');
-    header.append(mobileNav);
-    inlineNav.querySelector('a[href="index.html"]').parentElement.remove();
-    inlineNav.querySelectorAll('a').forEach(a => {
-      const match = [...UNITS, ...PAGES].find(x => x.href === a.getAttribute('href'));
-      if (match) a.textContent = match.short;
-    });
+    // Desktop: links sit inline in the bar, units in a dropdown. Phones: one full-width menu.
+    const inlineNav = header.querySelector('.site-nav.inline');
+    const mobileNav = header.querySelector('#site-nav-mobile');
     const wide = window.matchMedia('(min-width: 1000px)');
     const syncNav = () => { inlineNav.hidden = !wide.matches; mobileNav.hidden = wide.matches; };
     syncNav();
     wide.addEventListener('change', syncNav);
+
+    const ddBtn = header.querySelector('.dd-btn');
+    const ddMenu = header.querySelector('.dd-menu');
+    const setDd = open => { ddMenu.hidden = !open; ddBtn.setAttribute('aria-expanded', String(open)); };
+    ddBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      setDd(ddMenu.hidden);
+      if (!ddMenu.hidden) ddMenu.querySelector('a').focus({ preventScroll: true });
+    });
+    document.addEventListener('click', e => { if (!ddMenu.hidden && !ddMenu.contains(e.target)) setDd(false); });
+    header.addEventListener('keydown', e => {
+      if (ddMenu.hidden) return;
+      const items = [...ddMenu.querySelectorAll('a')];
+      const i = items.indexOf(document.activeElement);
+      if (e.key === 'Escape') { setDd(false); ddBtn.focus(); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    });
 
     header.append(themePanel(header.querySelector('.theme-toggle')));
     const menuBtn = header.querySelector('.menu-toggle');
